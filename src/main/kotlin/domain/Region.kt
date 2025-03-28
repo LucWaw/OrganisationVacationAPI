@@ -1,7 +1,4 @@
-package com.lucwaw.model
-
-import kotlinx.serialization.Serializable
-
+package com.lucwaw.domain
 
 enum class Region {
     AuvergneRhoneAlpes,
@@ -17,11 +14,3 @@ enum class Region {
     PaysDeLaLoire,
     ProvenceAlpesCoteDAzur
 }
-
-
-@Serializable
-data class Destination(
-    val name: String,
-    val region: Region,
-    val description: String
-)
