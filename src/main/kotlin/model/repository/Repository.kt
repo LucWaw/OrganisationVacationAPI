@@ -3,7 +3,7 @@ package com.lucwaw.model.repository
 import com.lucwaw.domain.Named
 
 abstract class Repository<T : Named> {
-    protected val items = mutableListOf<T>()
+    open val items = mutableListOf<T>()
 
     fun upsertItem(item: T) {
         val index = items.indexOfFirst { it.name == item.name }
