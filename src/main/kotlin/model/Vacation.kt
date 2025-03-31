@@ -2,7 +2,7 @@ package com.lucwaw.model
 
 import com.lucwaw.domain.Address
 import com.lucwaw.model.repository.ActivityRepository
-import com.lucwaw.model.repository.PeopleRepository
+import com.lucwaw.model.repository.PersonRepository
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import java.time.LocalDate
@@ -20,7 +20,7 @@ class Vacation(
     val activityRepository: ActivityRepository = ActivityRepository(this)
 
     @Transient
-    val peopleRepository: PeopleRepository = PeopleRepository(this)
+    val personRepository: PersonRepository = PersonRepository(this)
 }
 
 

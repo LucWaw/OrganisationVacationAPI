@@ -38,11 +38,11 @@ fun Application.configureRouting() {
                     call.respond(vacation)
                 }
 
-                route("/people") {
+                route("/persons") {
                     get {
                         if (call.validateParameter<String>("vacationName") == null) return@get
 
-                        val items = vacation.peopleRepository.items
+                        val items = vacation.personRepository.items
                         call.respond(items)
                     }
 
@@ -53,7 +53,7 @@ fun Application.configureRouting() {
 
 
                         try {
-                            vacation.peopleRepository.addItem(person)
+                            vacation.personRepository.addItem(person)
                             call.respond(HttpStatusCode.Created)
                         } catch (
                             e: IllegalArgumentException
@@ -67,7 +67,7 @@ fun Application.configureRouting() {
 
                         val name = call.validateParameter<String>("personName") ?: return@delete
 
-                        if (vacation.peopleRepository.removeItem(name)) {
+                        if (vacation.personRepository.removeItem(name)) {
                             call.respond(HttpStatusCode.NoContent)
                         } else {
                             call.respond(HttpStatusCode.NotFound)
@@ -80,7 +80,7 @@ fun Application.configureRouting() {
                         val person = call.validateJsonParameter<Person>() ?: return@put
 
 
-                        vacation.peopleRepository.updateItem(person)
+                        vacation.personRepository.updateItem(person)
                         call.respond(HttpStatusCode.Created)
                     }
                 }
