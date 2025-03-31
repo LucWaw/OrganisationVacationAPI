@@ -2,12 +2,13 @@ package com.lucwaw
 
 import com.lucwaw.domain.Activity
 import com.lucwaw.domain.Address
+import com.lucwaw.domain.Person
 import com.lucwaw.domain.Region
 import com.lucwaw.model.Vacation
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
-import io.ktor.server.request.receive
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.time.LocalDate
@@ -28,83 +29,124 @@ fun Application.configureRouting() {
             call.respondText("Hello Vacation!")
         }
 
+
         route("/vacation") {
             route("/{vacationName}") {
                 get {
-                    val name = call.parameters["vacationName"]
-                    if (name == null) {
-                        call.respond(HttpStatusCode.BadRequest)
-                        return@get
-                    }
-
+                    if (call.validateParameter<String>("vacationName") == null) return@get
 
                     call.respond(vacation)
                 }
-            }
-            route("/{vacationName}/activities") {
-                get {
-                    val name = call.parameters["vacationName"]
-                    if (name == null) {
-                        call.respond(HttpStatusCode.BadRequest)
-                        return@get
+
+                route("/people") {
+                    get {
+                        if (call.validateParameter<String>("vacationName") == null) return@get
+
+                        val items = vacation.peopleRepository.items
+                        call.respond(items)
                     }
 
-                    val activities = vacation.activityRepository.items
-                    call.respond(activities)
-                }
+                    post {
+                        if (call.validateParameter<String>("vacationName") == null) return@post
 
-                post {
+                        val person = call.validateJsonParameter<Person>() ?: return@post
 
-                    val activity = call.runCatching { receive<Activity>() }.getOrNull()
-                    if (activity == null) {
-                        log.error("Invalid activity data")
-                        call.respond(HttpStatusCode.BadRequest)
-                        return@post
+
+                        try {
+                            vacation.peopleRepository.addItem(person)
+                            call.respond(HttpStatusCode.Created)
+                        } catch (
+                            e: IllegalArgumentException
+                        ) {
+                            call.respond(HttpStatusCode.Conflict, e.message ?: "Item already exists")
+                        }
                     }
 
-                    vacation.activityRepository.upsertItem(activity)
-                    call.respond(HttpStatusCode.Created)
+                    delete("/{personName}") {
+                        if (call.validateParameter<String>("vacationName") == null) return@delete
+
+                        val name = call.validateParameter<String>("personName") ?: return@delete
+
+                        if (vacation.peopleRepository.removeItem(name)) {
+                            call.respond(HttpStatusCode.NoContent)
+                        } else {
+                            call.respond(HttpStatusCode.NotFound)
+                        }
+                    }
+
+                    put {
+                        if (call.validateParameter<String>("vacationName") == null) return@put
+
+                        val person = call.validateJsonParameter<Person>() ?: return@put
+
+
+                        vacation.peopleRepository.updateItem(person)
+                        call.respond(HttpStatusCode.Created)
+                    }
                 }
 
-            }
+                route("/activities") {
+                    get {
+                        if (call.validateParameter<String>("vacationName") == null) return@get
 
-            post {
+                        val items = vacation.activityRepository.items
+                        call.respond(items)
+                    }
+
+                    post {
+                        if (call.validateParameter<String>("vacationName") == null) return@post
 
 
+                        val activity = call.validateJsonParameter<Activity>() ?: return@post
 
-                /*val destination = call.runCatching { receive<Address>() }.getOrNull()
-                if (destination == null) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        "Invalid destination data, Note : region should be in ${
-                            Region.entries.toTypedArray().map { it.name }
-                        }"
-                    )
-                    return@post
+                        addItemWithoutDuplicate(vacation, activity)
+                    }
+
+                    delete("/{activityName}") {
+                        if (call.validateParameter<String>("vacationName") == null) return@delete
+
+
+                        val name = call.validateParameter<String>("activityName") ?: return@delete
+
+
+                        if (!vacation.activityRepository.removeItem(name)) {
+                            call.respond(HttpStatusCode.NotFound)
+                            return@delete
+                        }
+                        call.respond(HttpStatusCode.NoContent)
+
+                    }
+                    put {
+                        if (call.validateParameter<String>("vacationName") == null) return@put
+
+
+                        val activity = call.validateJsonParameter<Activity>() ?: return@put
+
+
+                        vacation.activityRepository.updateItem(activity)
+                        call.respond(HttpStatusCode.Created)
+                    }
+
+                    route("/{activityName}") {
+                        get {
+                            if (call.validateParameter<String>("vacationName") == null) return@get
+
+                            val name = call.validateParameter<String>("activityName") ?: return@get
+
+
+                            val activity = vacation.activityRepository.itemByName(name)
+                            if (activity == null) {
+                                call.respond(HttpStatusCode.NotFound)
+                                return@get
+                            }
+                            call.respond(activity)
+                        }
+                    }
                 }
 
-                call.respond(HttpStatusCode.Created)*/
 
             }
 
-            delete("/{destinationName}") {
-                /*val name = call.parameters["destinationName"]
-                if (name == null) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@delete
-                }
-
-                if (PeopleRepository.removeDestination(name)) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
-                }*/
-            }
-
-            get {
-                /*val destinations = PeopleRepository.getDestinations()
-                call.respond(destinations)*/
-            }
 
         }
 
@@ -112,3 +154,50 @@ fun Application.configureRouting() {
         staticResources("/static", "static")
     }
 }
+
+private suspend fun RoutingContext.addItemWithoutDuplicate(
+    vacation: Vacation,
+    activity: Activity
+) {
+    try {
+        vacation.activityRepository.addItem(activity)
+        call.respond(HttpStatusCode.Created)
+    } catch (
+        e: IllegalArgumentException
+    ) {
+        call.respond(HttpStatusCode.Conflict, e.message ?: "Item already exists")
+    }
+}
+
+suspend inline fun <reified T : Any> RoutingCall.validateJsonParameter(): T? {
+    val parameter = runCatching { receive<T>() }.getOrNull()
+    if (parameter == null) {
+        respond(HttpStatusCode.BadRequest)
+        return null
+    }
+    return parameter
+
+}
+
+suspend inline fun <reified T> ApplicationCall.validateParameter(keyName: String): T? {
+    val parameter = parameters[keyName]
+
+    if (parameter.isNullOrEmpty()) {
+        respond(HttpStatusCode.BadRequest, "$keyName is required")
+        return null
+    }
+
+    return when (T::class) {
+        String::class -> parameter as T
+        Int::class -> parameter.toIntOrNull() as? T
+        Long::class -> parameter.toLongOrNull() as? T
+        Double::class -> parameter.toDoubleOrNull() as? T
+        Boolean::class -> parameter.toBooleanStrictOrNull() as? T
+        else -> {
+            respond(HttpStatusCode.BadRequest, "Invalid parameter type")
+            null
+        }
+    }
+}
+
+

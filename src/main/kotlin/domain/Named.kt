@@ -1,5 +1,6 @@
 package com.lucwaw.domain
 
-interface Named {
+
+sealed interface Named {
     val name: String
 }

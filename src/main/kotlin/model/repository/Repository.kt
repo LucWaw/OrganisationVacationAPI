@@ -5,12 +5,24 @@ import com.lucwaw.domain.Named
 abstract class Repository<T : Named> {
     open val items = mutableListOf<T>()
 
-    fun upsertItem(item: T) {
+    fun itemByName(name: String) = items.find {
+        it.name.equals(name, ignoreCase = true)
+    }
+
+    fun addItem(item: T) {
+        if (itemByName(item.name) != null){
+            throw IllegalArgumentException("Item with name ${item.name} already exists.")
+        }
+        items.add(item)
+    }
+
+    fun updateItem(item: T): Boolean {
         val index = items.indexOfFirst { it.name == item.name }
-        if (index != -1) {
+        return if (index != -1) {
             items[index] = item
+            true
         } else {
-            items.add(item)
+            false
         }
     }
 
