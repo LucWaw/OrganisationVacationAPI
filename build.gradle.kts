@@ -20,6 +20,8 @@ repositories {
 }
 
 dependencies {
+    testImplementation("com.jayway.jsonpath:json-path:2.9.0")
+    testImplementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.host.common)
     implementation(libs.ktor.server.content.negotiation)

@@ -1,0 +1,70 @@
+
+### GET root endpoint
+GET http://127.0.0.1:8080/
+
+### GET a vacation by name
+GET http://127.0.0.1:8080/vacation/Paris
+
+### GET persons in a vacation
+GET http://127.0.0.1:8080/vacation/Paris/persons
+
+### POST a new person to a vacation
+POST http://127.0.0.1:8080/vacation/Paris/persons
+Content-Type: application/json
+
+{
+  "name": "Alice Dupont",
+  "id": "456",
+  "firstName": "Alice"
+}
+
+### DELETE a person from a vacation
+DELETE http://127.0.0.1:8080/vacation/Paris/persons/Alice%20Dupont
+
+### PUT update a person's details
+PUT http://127.0.0.1:8080/vacation/Paris/persons
+Content-Type: application/json
+
+{
+  "name": "Alice Dupont",
+  "id": "456",
+  "firstName": "Alicia"
+}
+
+### GET a specific person
+GET http://127.0.0.1:8080/vacation/Paris/persons/Alice%20Dupont
+
+### GET activities in a vacation
+GET http://127.0.0.1:8080/vacation/Paris/activities
+
+### POST a new activity to a vacation
+POST http://127.0.0.1:8080/vacation/Paris/activities
+Content-Type: application/json
+
+{
+  "name": "Musée du Louvre",
+  "address": {
+    "name": "Rue de Rivoli",
+    "region": "IleDeFrance"
+  },
+  "description": "Visite du célèbre musée du Louvre"
+}
+
+### DELETE an activity from a vacation
+DELETE http://127.0.0.1:8080/vacation/Paris/activities/Mus%C3%A9e%20du%20Louvre
+
+### PUT update an activity's details
+PUT http://127.0.0.1:8080/vacation/Paris/activities
+Content-Type: application/json
+
+{
+  "name": "Musée du Louvre",
+  "address": {
+    "name": "Rue de Rivoli",
+    "region": "IleDeFrance"
+  },
+  "description": "Visite nocturne exclusive"
+}
+
+### GET a specific activity
+GET http://127.0.0.1:8080/vacation/Paris/activities/Mus%C3%A9e%20du%20Louvre

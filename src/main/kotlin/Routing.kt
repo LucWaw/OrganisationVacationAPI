@@ -14,16 +14,30 @@ import io.ktor.server.routing.*
 import java.time.LocalDate
 
 fun Application.configureRouting() {
-    routing {
-
-        val vacation = Vacation(
+    val vacations = mapOf<String, Vacation>(
+        ("Paris" to Vacation(
             startDate = LocalDate.of(2025, 8, 2),
             endDate = LocalDate.of(2025, 8, 9),
             address = Address(
                 name = "Paris",
                 region = Region.IleDeFrance
             )
-        )
+        ))
+    )
+
+    suspend fun ApplicationCall.getVacationOrNull() : Vacation? {
+        val vacationName = validateParameter<String>("vacationName") ?: return null
+
+        return if (vacations[vacationName] != null) {
+            vacations[vacationName]
+        } else {
+            respond(HttpStatusCode.NotFound, "Vacation not found")
+            return null
+        }
+    }
+    routing {
+
+
 
         get("/") {
             call.respondText("Hello Vacation!")
@@ -33,21 +47,21 @@ fun Application.configureRouting() {
         route("/vacation") {
             route("/{vacationName}") {
                 get {
-                    if (call.validateParameter<String>("vacationName") == null) return@get
-
-                    call.respond(vacation)
+                    call.getVacationOrNull()?.let { vacation ->
+                        call.respond(vacation)
+                    }
                 }
 
                 route("/persons") {
                     get {
-                        if (call.validateParameter<String>("vacationName") == null) return@get
+                        val vacation = call.getVacationOrNull() ?: return@get
 
                         val items = vacation.personRepository.items
                         call.respond(items)
                     }
 
                     post {
-                        if (call.validateParameter<String>("vacationName") == null) return@post
+                        val vacation = call.getVacationOrNull() ?: return@post
 
                         val person = call.validateJsonParameter<Person>() ?: return@post
 
@@ -63,7 +77,7 @@ fun Application.configureRouting() {
                     }
 
                     delete("/{personName}") {
-                        if (call.validateParameter<String>("vacationName") == null) return@delete
+                        val vacation = call.getVacationOrNull() ?: return@delete
 
                         val name = call.validateParameter<String>("personName") ?: return@delete
 
@@ -75,26 +89,43 @@ fun Application.configureRouting() {
                     }
 
                     put {
-                        if (call.validateParameter<String>("vacationName") == null) return@put
+                        val vacation = call.getVacationOrNull() ?: return@put
 
                         val person = call.validateJsonParameter<Person>() ?: return@put
 
 
-                        vacation.personRepository.updateItem(person)
-                        call.respond(HttpStatusCode.Created)
+                        if (!vacation.personRepository.updateItem(person)) {
+                            call.respond(HttpStatusCode.NotFound)
+                            return@put
+                        }
+                        call.respond(HttpStatusCode.OK)
+                        return@put
+                    }
+                    get("/{personName}") {
+                        val vacation = call.getVacationOrNull() ?: return@get
+
+                        val name = call.validateParameter<String>("personName") ?: return@get
+
+
+                        val person = vacation.personRepository.itemByName(name)
+                        if (person == null) {
+                            call.respond(HttpStatusCode.NotFound)
+                            return@get
+                        }
+                        call.respond(person)
                     }
                 }
 
                 route("/activities") {
                     get {
-                        if (call.validateParameter<String>("vacationName") == null) return@get
+                        val vacation = call.getVacationOrNull() ?: return@get
 
                         val items = vacation.activityRepository.items
                         call.respond(items)
                     }
 
                     post {
-                        if (call.validateParameter<String>("vacationName") == null) return@post
+                        val vacation = call.getVacationOrNull() ?: return@post
 
 
                         val activity = call.validateJsonParameter<Activity>() ?: return@post
@@ -103,7 +134,7 @@ fun Application.configureRouting() {
                     }
 
                     delete("/{activityName}") {
-                        if (call.validateParameter<String>("vacationName") == null) return@delete
+                        val vacation = call.getVacationOrNull() ?: return@delete
 
 
                         val name = call.validateParameter<String>("activityName") ?: return@delete
@@ -117,30 +148,32 @@ fun Application.configureRouting() {
 
                     }
                     put {
-                        if (call.validateParameter<String>("vacationName") == null) return@put
+                        val vacation = call.getVacationOrNull() ?: return@put
 
 
                         val activity = call.validateJsonParameter<Activity>() ?: return@put
 
 
-                        vacation.activityRepository.updateItem(activity)
-                        call.respond(HttpStatusCode.Created)
+                        if (!vacation.activityRepository.updateItem(activity)) {
+                            call.respond(HttpStatusCode.NotFound)
+                            return@put
+                        }
+                        call.respond(HttpStatusCode.OK)
+                        return@put
                     }
 
-                    route("/{activityName}") {
-                        get {
-                            if (call.validateParameter<String>("vacationName") == null) return@get
+                    get("/{activityName}") {
+                        val vacation = call.getVacationOrNull() ?: return@get
 
-                            val name = call.validateParameter<String>("activityName") ?: return@get
+                        val name = call.validateParameter<String>("activityName") ?: return@get
 
 
-                            val activity = vacation.activityRepository.itemByName(name)
-                            if (activity == null) {
-                                call.respond(HttpStatusCode.NotFound)
-                                return@get
-                            }
-                            call.respond(activity)
+                        val activity = vacation.activityRepository.itemByName(name)
+                        if (activity == null) {
+                            call.respond(HttpStatusCode.NotFound)
+                            return@get
                         }
+                        call.respond(activity)
                     }
                 }
 
@@ -153,7 +186,10 @@ fun Application.configureRouting() {
         // Static plugin. Try to access `/static/index.html`
         staticResources("/static", "static")
     }
+
+
 }
+
 
 private suspend fun RoutingContext.addItemWithoutDuplicate(
     vacation: Vacation,
